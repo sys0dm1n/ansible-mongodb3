@@ -1,0 +1,51 @@
+# mongod.conf
+
+# for documentation of all options, see:
+#   http://docs.mongodb.org/manual/reference/configuration-options/
+
+# Where and how to store data.
+storage:
+  dbPath: {{ mongo_dbPath }}
+  journal:
+    enabled: true
+  engine: wiredTiger
+#  engine:
+#  mmapv1:
+#  wiredTiger:
+
+# where to write logging data.
+systemLog:
+  destination: file
+  logAppend: true
+  path: {{ logpath }}
+  logRotate: rename
+
+# network interfaces
+net:
+  port: {{ mongo_port }}
+  bindIp: 0.0.0.0
+
+processManagement:
+  fork: true
+
+#processManagement:
+
+#security:
+  #authorization: enabled
+  #keyFile: /home/mongodb/keyfile
+
+##disable localhost authentication bypass. Enabled by default.
+#setParameter:
+#   enableLocalhostAuthBypass: false
+
+#operationProfiling:
+
+#replication:
+
+#sharding:
+
+## Enterprise-Only Options:
+
+#auditLog:
+
+#snmp:

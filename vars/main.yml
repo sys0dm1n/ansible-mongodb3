@@ -1,0 +1,6 @@
+---
+  logpath: /var/log/mongodb/
+  mongo_dbPath: /home/mongodb/
+  mongo_port: 3848
+  mongo_admin_pass: ThisIsMyPassword
+  mongo_admin_user: admin

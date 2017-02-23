@@ -1,0 +1,101 @@
+---
+# mongo installation playbook
+
+  - name: Create the GPG key for ubuntu
+    command: 'apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv EA312927'
+
+  - name: Create the repository for Ubuntu 1204
+    lineinfile: dest=/etc/apt/sources.list.d/mongodb-org-3.2.list 
+                owner=root 
+                group=root 
+                create=yes 
+                state=present
+                line="deb http://repo.mongodb.org/apt/ubuntu precise/mongodb-org/3.2 multiverse" 
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '12.04'
+
+  - name: Create the repository for Ubuntu 1404
+    lineinfile: dest=/etc/apt/sources.list.d/mongodb-org-3.2.list 
+                owner=root 
+                group=root 
+                create=yes 
+                state=present
+                line="deb http://repo.mongodb.org/apt/ubuntu trusty/mongodb-org/3.2 multiverse" 
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '14.04'
+
+  - name: Create the repository for Ubuntu 1604
+    lineinfile: dest=/etc/apt/sources.list.d/mongodb-org-3.2.list 
+                owner=root 
+                group=root 
+                create=yes 
+                state=present
+                line="deb http://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/3.2 multiverse" 
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '16.04'
+
+  - name: Disable THP for Mongodb at boot time
+    copy: src=rc.local dest=/etc/rc.local owner=root group=root mode=644 backup=yes
+
+  - name: Running /etc/rc.local
+    command: sh /etc/rc.local
+
+  - name: Create the mongod user
+    user: name=mongodb comment="MongoDB" createhome=yes
+
+  - name: Update APT package cache
+    apt: update_cache=yes
+
+  - name: Install the mongodb package
+    apt: name={{ item }} state=present update_cache=yes cache_valid_time=3600
+    with_items:
+      - python-selinux
+      - mongodb-org
+      - python-pip
+      - bc
+
+  - name: Replace the mongodb home folder
+    replace: dest=/etc/init/mongod.conf regexp='var\/lib\/mongodb' replace='home/mongodb' backup=yes
+    ignore_errors: yes
+
+  # - name: Adding the keyfile
+  #   copy: src=keyfile dest=/home/mongodb/keyfile owner=mongodb group=mongodb mode=700
+
+  - name: Install the latest pymongo package
+    pip: name=pymongo state=latest use_mirrors=no
+
+  - name: Copy mongod.conf file
+    template: src=mongod.conf.j2 dest=/etc/mongod.conf group=root owner=root mode=0644 backup=yes
+
+  - name: Copy unit file mongodb.service to manage the MongoDB service
+    copy: src=mongodb.service dest=/etc/systemd/system/mongodb.service owner=root group=root mode=644 backup=yes
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '16.04'
+
+  - name: Restart service MongoDB
+    shell: systemctl daemon-reload && systemctl enable mongodb.service
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_version == '16.04'
+
+  - name: Start the mongodb service
+    service: name=mongodb state=started
+
+  - name: Add the admin user
+    mongodb_user: database=admin
+                  login_port={{ mongo_port }}
+                  name={{ mongo_admin_user }}
+                  password={{ mongo_admin_pass }}
+                  roles='userAdminAnyDatabase,dbAdminAnyDatabase,clusterAdmin,readWriteAnyDatabase'
+                  state=present
+    ignore_errors: yes
+
+  - name: Replace the mongodb home folder
+    replace: 
+      dest=/etc/mongod.conf
+      regexp={{ item.regexp }}
+      replace={{ item.replace }}
+      backup=yes
+    with_items:
+      - { regexp: '#security:', replace: 'security:' }
+      - { regexp: '#authorization: enabled', replace: 'authorization: enabled' }
+    ignore_errors: yes
+# sudo chmod 755 /sys/dev* -R
+# sudo chmod +r /sys/devices/system/node -R
+
+  - name: Start the mongodb service
+    service: name=mongodb state=restarted
